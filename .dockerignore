@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+.env
+.git
+.gitignore
+.venv
+venv
+*.md
+.mypy_cache
+.pytest_cache
+.ruff_cache

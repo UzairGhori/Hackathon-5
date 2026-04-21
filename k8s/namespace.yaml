@@ -1,0 +1,10 @@
+# ============================================================
+# Customer Success Digital FTE — Kubernetes Namespace
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: customer-success
+  labels:
+    app.kubernetes.io/part-of: customer-success
+    app.kubernetes.io/managed-by: kubectl

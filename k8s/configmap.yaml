@@ -1,0 +1,34 @@
+# ============================================================
+# Customer Success Digital FTE — ConfigMap
+# Non-secret configuration shared across services.
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/part-of: customer-success
+data:
+  # PostgreSQL
+  POSTGRES_DB: "customer_success"
+  POSTGRES_USER: "postgres"
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-0.kafka-headless.customer-success.svc.cluster.local:9092"
+  KAFKA_BROKER_ID: "1"
+  KAFKA_ZOOKEEPER_CONNECT: "zookeeper-0.zookeeper-headless.customer-success.svc.cluster.local:2181"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+  KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-0.kafka-headless.customer-success.svc.cluster.local:29092,EXTERNAL://kafka.customer-success.svc.cluster.local:9092"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # Zookeeper
+  ZOOKEEPER_CLIENT_PORT: "2181"
+  ZOOKEEPER_TICK_TIME: "2000"
+
+  # Application
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_LOG_LEVEL: "INFO"

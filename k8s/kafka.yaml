@@ -1,0 +1,258 @@
+# ============================================================
+# Customer Success Digital FTE — Zookeeper + Kafka
+#
+# StatefulSets with persistent storage for both components.
+# ============================================================
+
+# ── Zookeeper Headless Service ───────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper-headless
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: customer-success
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: zookeeper
+  ports:
+    - name: client
+      port: 2181
+      targetPort: 2181
+    - name: peer
+      port: 2888
+      targetPort: 2888
+    - name: leader-election
+      port: 3888
+      targetPort: 3888
+
+---
+# ── Zookeeper ClusterIP Service ─────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: customer-success
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zookeeper
+  ports:
+    - name: client
+      port: 2181
+      targetPort: 2181
+
+---
+# ── Zookeeper StatefulSet ────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: customer-success
+spec:
+  serviceName: zookeeper-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zookeeper
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/part-of: customer-success
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: zookeeper
+          image: confluentinc/cp-zookeeper:7.6.0
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: peer
+            - containerPort: 3888
+              name: leader-election
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /var/lib/zookeeper/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - echo ruok | nc localhost 2181 | grep imok
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - echo ruok | nc localhost 2181 | grep imok
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+# ── Kafka Headless Service ───────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: customer-success
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: internal
+      port: 29092
+      targetPort: 29092
+    - name: external
+      port: 9092
+      targetPort: 9092
+
+---
+# ── Kafka ClusterIP Service ─────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: customer-success
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: external
+      port: 9092
+      targetPort: 9092
+    - name: internal
+      port: 29092
+      targetPort: 29092
+
+---
+# ── Kafka StatefulSet ────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: customer-success
+spec:
+  serviceName: kafka-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/part-of: customer-success
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.6.0
+          ports:
+            - containerPort: 9092
+              name: external
+            - containerPort: 29092
+              name: internal
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "1"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "zookeeper.customer-success.svc.cluster.local:2181"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "INTERNAL://kafka-0.kafka-headless.customer-success.svc.cluster.local:29092,EXTERNAL://kafka.customer-success.svc.cluster.local:9092"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "INTERNAL"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "168"
+            - name: KAFKA_LOG_SEGMENT_BYTES
+              value: "1073741824"
+            - name: KAFKA_NUM_PARTITIONS
+              value: "3"
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - kafka-topics --bootstrap-server localhost:9092 --list
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - kafka-topics --bootstrap-server localhost:9092 --list
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            timeoutSeconds: 10
+
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

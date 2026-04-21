@@ -1,0 +1,23 @@
+# ============================================================
+# Customer Success Digital FTE — Kustomization
+#
+# Apply all manifests in dependency order:
+#   kubectl apply -k k8s/
+# ============================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: customer-success
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - api.yaml
+  - worker.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: customer-success
+  app.kubernetes.io/managed-by: kustomize

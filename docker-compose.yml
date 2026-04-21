@@ -1,0 +1,148 @@
+# ============================================================
+# Customer Success Digital FTE — Docker Compose
+#
+# Services:
+#   postgres  — PostgreSQL 16 + pgvector (schema auto-applied)
+#   zookeeper — Required by Kafka
+#   kafka     — Message broker (topic: customer_messages)
+#   api       — FastAPI server (receives messages, publishes to Kafka)
+#   worker    — Kafka consumer (runs AI agent, stores responses)
+#
+# Usage:
+#   docker-compose up --build        # start everything
+#   docker-compose up --build -d     # start in background
+#   docker-compose logs -f api       # tail API logs
+#   docker-compose logs -f worker    # tail worker logs
+#   docker-compose down              # stop all services
+#   docker-compose down -v           # stop + delete volumes
+#
+# The API is available at http://localhost:8000
+# Swagger docs at http://localhost:8000/docs (when APP_DEBUG=true)
+# ============================================================
+
+services:
+
+  # ── PostgreSQL with pgvector ─────────────────────────────
+  postgres:
+    build:
+      context: .
+      dockerfile: docker/postgres.Dockerfile
+    container_name: cs-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: customer_success
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cs-network
+
+  # ── Zookeeper (Kafka dependency) ─────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: cs-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,srvr"
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cs-network
+
+  # ── Kafka Broker ────────────────────────────────────────
+  kafka:
+    build:
+      context: .
+      dockerfile: docker/kafka.Dockerfile
+    container_name: cs-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Listeners: INTERNAL for container-to-container, EXTERNAL for host access
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cs-network
+
+  # ── FastAPI Server ──────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: cs-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override host-based defaults for container networking
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/customer_success
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: on-failure
+    networks:
+      - cs-network
+
+  # ── Kafka Consumer Worker ───────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: cs-worker
+    env_file:
+      - .env
+    environment:
+      # Override host-based defaults for container networking
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/customer_success
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - cs-network
+
+networks:
+  cs-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,339 @@
+# ============================================================
+# Customer Success Digital FTE — PostgreSQL 16 + pgvector
+#
+# StatefulSet with persistent storage.
+# Schema is baked into the Docker image via initdb.
+# ============================================================
+
+# ── Headless Service (for StatefulSet DNS) ───────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: customer-success
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# ── ClusterIP Service (stable endpoint for app) ─────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: customer-success
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# ── StatefulSet ──────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: customer-success
+spec:
+  serviceName: postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/part-of: customer-success
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-schema
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+      volumes:
+        - name: init-schema
+          configMap:
+            name: postgres-init-schema
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+# ── Init Schema ConfigMap ────────────────────────────────────
+# The schema DDL is mounted into /docker-entrypoint-initdb.d/
+# so it runs automatically on first database initialization.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-schema
+  namespace: customer-success
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: customer-success
+data:
+  01-schema.sql: |
+    -- Extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "vector";
+
+    -- Enums
+    CREATE TYPE channel_type      AS ENUM ('web', 'gmail', 'whatsapp');
+    CREATE TYPE message_direction AS ENUM ('inbound', 'outbound');
+    CREATE TYPE message_sender    AS ENUM ('customer', 'agent', 'system');
+    CREATE TYPE ticket_status     AS ENUM ('open', 'in_progress', 'waiting_on_customer', 'escalated', 'resolved', 'closed');
+    CREATE TYPE ticket_priority   AS ENUM ('low', 'medium', 'high', 'critical');
+    CREATE TYPE ticket_event_type AS ENUM ('created', 'status_changed', 'priority_changed', 'assigned', 'escalated', 'note_added', 'resolved', 'closed');
+
+    -- customers
+    CREATE TABLE customers (
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        full_name   VARCHAR(255) NOT NULL,
+        company     VARCHAR(255),
+        metadata    JSONB NOT NULL DEFAULT '{}',
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_customers_company    ON customers (company);
+    CREATE INDEX idx_customers_created_at ON customers (created_at);
+    CREATE INDEX idx_customers_metadata   ON customers USING gin (metadata);
+
+    -- customer_identifiers
+    CREATE TABLE customer_identifiers (
+        id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        customer_id   UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        channel       channel_type NOT NULL,
+        identifier    VARCHAR(512) NOT NULL,
+        is_primary    BOOLEAN NOT NULL DEFAULT false,
+        verified      BOOLEAN NOT NULL DEFAULT false,
+        metadata      JSONB NOT NULL DEFAULT '{}',
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX idx_ci_channel_identifier ON customer_identifiers (channel, identifier);
+    CREATE INDEX idx_ci_customer_id               ON customer_identifiers (customer_id);
+
+    -- conversations
+    CREATE TABLE conversations (
+        id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        customer_id   UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        channel       channel_type NOT NULL,
+        subject       VARCHAR(512),
+        status        VARCHAR(32) NOT NULL DEFAULT 'active',
+        metadata      JSONB NOT NULL DEFAULT '{}',
+        started_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ended_at      TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_conversations_customer_id ON conversations (customer_id);
+    CREATE INDEX idx_conversations_channel     ON conversations (channel);
+    CREATE INDEX idx_conversations_status      ON conversations (status);
+    CREATE INDEX idx_conversations_started_at  ON conversations (started_at);
+
+    -- messages
+    CREATE TABLE messages (
+        id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        conversation_id   UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        direction         message_direction NOT NULL,
+        sender            message_sender NOT NULL,
+        content           TEXT NOT NULL,
+        channel           channel_type NOT NULL,
+        channel_message_id VARCHAR(512),
+        metadata          JSONB NOT NULL DEFAULT '{}',
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_messages_conversation_id   ON messages (conversation_id);
+    CREATE INDEX idx_messages_created_at        ON messages (created_at);
+    CREATE INDEX idx_messages_channel_message   ON messages (channel, channel_message_id);
+
+    -- tickets
+    CREATE TABLE tickets (
+        id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        conversation_id  UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        customer_id      UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        channel          channel_type NOT NULL,
+        subject          VARCHAR(512) NOT NULL,
+        description      TEXT,
+        status           ticket_status NOT NULL DEFAULT 'open',
+        priority         ticket_priority NOT NULL DEFAULT 'medium',
+        assigned_to      VARCHAR(255),
+        tags             TEXT[] DEFAULT '{}',
+        metadata         JSONB NOT NULL DEFAULT '{}',
+        resolved_at      TIMESTAMPTZ,
+        closed_at        TIMESTAMPTZ,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_tickets_conversation_id ON tickets (conversation_id);
+    CREATE INDEX idx_tickets_customer_id     ON tickets (customer_id);
+    CREATE INDEX idx_tickets_status          ON tickets (status);
+    CREATE INDEX idx_tickets_priority        ON tickets (priority);
+    CREATE INDEX idx_tickets_assigned_to     ON tickets (assigned_to);
+    CREATE INDEX idx_tickets_created_at      ON tickets (created_at);
+    CREATE INDEX idx_tickets_tags            ON tickets USING gin (tags);
+
+    -- ticket_events
+    CREATE TABLE ticket_events (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        ticket_id    UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        event_type   ticket_event_type NOT NULL,
+        actor        VARCHAR(255) NOT NULL,
+        old_value    JSONB,
+        new_value    JSONB,
+        note         TEXT,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_te_ticket_id  ON ticket_events (ticket_id);
+    CREATE INDEX idx_te_event_type ON ticket_events (event_type);
+    CREATE INDEX idx_te_created_at ON ticket_events (created_at);
+
+    -- knowledge_base
+    CREATE TABLE knowledge_base (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        title        VARCHAR(512) NOT NULL,
+        content      TEXT NOT NULL,
+        category     VARCHAR(255),
+        tags         TEXT[] DEFAULT '{}',
+        embedding    vector(1536),
+        metadata     JSONB NOT NULL DEFAULT '{}',
+        is_active    BOOLEAN NOT NULL DEFAULT true,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_kb_category   ON knowledge_base (category);
+    CREATE INDEX idx_kb_tags       ON knowledge_base USING gin (tags);
+    CREATE INDEX idx_kb_active     ON knowledge_base (is_active);
+    CREATE INDEX idx_kb_embedding  ON knowledge_base USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+    -- channel_configs
+    CREATE TABLE channel_configs (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        channel      channel_type NOT NULL UNIQUE,
+        is_enabled   BOOLEAN NOT NULL DEFAULT true,
+        config       JSONB NOT NULL DEFAULT '{}',
+        metadata     JSONB NOT NULL DEFAULT '{}',
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- agent_metrics
+    CREATE TABLE agent_metrics (
+        id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        conversation_id     UUID REFERENCES conversations(id) ON DELETE SET NULL,
+        ticket_id           UUID REFERENCES tickets(id) ON DELETE SET NULL,
+        channel             channel_type NOT NULL,
+        response_time_ms    INTEGER,
+        tokens_input        INTEGER,
+        tokens_output       INTEGER,
+        model_used          VARCHAR(128),
+        resolved_by_ai      BOOLEAN NOT NULL DEFAULT false,
+        escalated           BOOLEAN NOT NULL DEFAULT false,
+        customer_sentiment  VARCHAR(32),
+        metadata            JSONB NOT NULL DEFAULT '{}',
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX idx_am_conversation_id ON agent_metrics (conversation_id);
+    CREATE INDEX idx_am_ticket_id       ON agent_metrics (ticket_id);
+    CREATE INDEX idx_am_channel         ON agent_metrics (channel);
+    CREATE INDEX idx_am_created_at      ON agent_metrics (created_at);
+    CREATE INDEX idx_am_resolved_by_ai  ON agent_metrics (resolved_by_ai);
+
+    -- Trigger: auto-update updated_at columns
+    CREATE OR REPLACE FUNCTION update_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = now();
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trg_customers_updated_at
+        BEFORE UPDATE ON customers
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    CREATE TRIGGER trg_conversations_updated_at
+        BEFORE UPDATE ON conversations
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    CREATE TRIGGER trg_tickets_updated_at
+        BEFORE UPDATE ON tickets
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    CREATE TRIGGER trg_knowledge_base_updated_at
+        BEFORE UPDATE ON knowledge_base
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    CREATE TRIGGER trg_channel_configs_updated_at
+        BEFORE UPDATE ON channel_configs
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
