@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="Customer Success Digital FTE",
-    description="AI-powered customer support agent across Web, Gmail, and WhatsApp.",
+    description="AI-powered customer support agent across Web, Gmail, and WhatsApp (Twilio).",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

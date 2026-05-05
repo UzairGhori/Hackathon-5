@@ -16,6 +16,7 @@ class AgentContext:
     customer_id: uuid.UUID
     conversation_id: uuid.UUID
     channel: ChannelType
+    customer_identifier: str = ""
     # Populated by tools during execution
     response_text: str = ""
     escalated: bool = False

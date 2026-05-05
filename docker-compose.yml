@@ -101,7 +101,7 @@ services:
       - .env
     environment:
       # Override host-based defaults for container networking
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/customer_success
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/customer_success
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       APP_DEBUG: "true"
     depends_on:
@@ -129,7 +129,7 @@ services:
       - .env
     environment:
       # Override host-based defaults for container networking
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/customer_success
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/customer_success
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       postgres:

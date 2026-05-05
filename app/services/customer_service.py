@@ -69,3 +69,22 @@ class CustomerService:
             customer.id, channel.value, identifier,
         )
         return customer, True
+
+    async def get_identifier(
+        self,
+        customer_id: uuid.UUID,
+        channel: ChannelType,
+    ) -> str | None:
+        """Fetch the identifier for a customer on a specific channel."""
+        stmt = (
+            select(CustomerIdentifier.identifier)
+            .where(
+                CustomerIdentifier.customer_id == customer_id,
+                CustomerIdentifier.channel == channel,
+            )
+            .order_by(CustomerIdentifier.is_primary.desc())
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+

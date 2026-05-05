@@ -303,6 +303,15 @@ async def send_response(
     session.add(outbound)
     await session.flush()
 
+    # Deliver the message via the appropriate channel
+    from app.services.delivery_service import delivery_service
+    await delivery_service.deliver(
+        channel=ctx.context.channel,
+        customer_identifier=ctx.context.customer_identifier,
+        message=message,
+        metadata=ctx.context.metadata,
+    )
+
     ctx.context.response_text = message
 
     logger.info(

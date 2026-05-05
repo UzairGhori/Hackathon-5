@@ -8,7 +8,7 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Build-time deps for asyncpg (libpq) and C extensions
+# Build-time deps for psycopg (libpq) and C extensions
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc libpq-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -24,7 +24,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Runtime-only system deps (libpq for asyncpg)
+# Runtime-only system deps (libpq for psycopg)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libpq5 && \
     rm -rf /var/lib/apt/lists/*

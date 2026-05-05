@@ -15,6 +15,8 @@ from app.agent.prompts import SYSTEM_PROMPT
 from app.agent.tools import ALL_TOOLS
 from app.core.logging import get_logger
 from app.db.models import AgentMetric, ChannelType
+from app.services.customer_service import CustomerService
+from app.services.conversation_service import ConversationService
 
 logger = get_logger(__name__)
 
@@ -50,11 +52,31 @@ async def run_agent(
         The agent's response text.
     """
     # Build context for tool calls
+    cust_service = CustomerService(session)
+    customer_identifier = await cust_service.get_identifier(customer_id, channel) or ""
+
+    # Fetch latest message for metadata (threading support)
+    conv_service = ConversationService(session)
+    latest_msg = await conv_service.get_latest_message(conversation_id)
+    metadata = {}
+    if latest_msg and channel == ChannelType.GMAIL:
+        msg_metadata = latest_msg.metadata_ or {}
+        headers = msg_metadata.get("headers", {})
+        metadata["gmail_message_id"] = latest_msg.channel_message_id
+        # Build references
+        prev_refs = headers.get("References", "")
+        metadata["gmail_references"] = f"{prev_refs} {latest_msg.channel_message_id}".strip()
+        metadata["subject"] = headers.get("Subject", "Re: Customer Support")
+        if metadata["subject"] and not metadata["subject"].startswith("Re:"):
+            metadata["subject"] = f"Re: {metadata['subject']}"
+
     context = AgentContext(
         session=session,
         customer_id=customer_id,
         conversation_id=conversation_id,
         channel=channel,
+        customer_identifier=customer_identifier,
+        metadata=metadata,
     )
 
     start_time = time.perf_counter()

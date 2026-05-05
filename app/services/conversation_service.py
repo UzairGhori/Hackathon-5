@@ -93,3 +93,21 @@ class ConversationService:
             message.id, conversation_id, direction.value, sender.value,
         )
         return message
+
+    async def get_latest_message(
+        self,
+        conversation_id: uuid.UUID,
+        direction: MessageDirection = MessageDirection.INBOUND,
+    ) -> Message | None:
+        """Fetch the most recent message in a conversation."""
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.direction == direction,
+            )
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

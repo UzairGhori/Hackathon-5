@@ -34,19 +34,79 @@ class GmailWebhookPayload(BaseModel):
 
 # ── WhatsApp Webhook ─────────────────────────────────────────
 
+class WhatsAppProfile(BaseModel):
+    name: str | None = None
+
+
+class WhatsAppContact(BaseModel):
+    profile: WhatsAppProfile = Field(default_factory=WhatsAppProfile)
+    wa_id: str
+
+
+class WhatsAppText(BaseModel):
+    body: str
+
+
+class WhatsAppMedia(BaseModel):
+    id: str
+    mime_type: str | None = None
+    sha256: str | None = None
+    caption: str | None = None
+    filename: str | None = None
+
+
 class WhatsAppMessage(BaseModel):
-    message_id: str = Field(..., description="WhatsApp message ID")
-    from_number: str = Field(..., pattern=r"^\+?[1-9]\d{6,14}$")
-    from_name: str = Field(default="")
-    body: str = Field(..., min_length=1)
-    timestamp: datetime | None = None
-    message_type: str = Field(default="text")
-    metadata: dict = Field(default_factory=dict)
+    id: str
+    from_: str = Field(..., alias="from")
+    timestamp: str
+    type: str
+    text: WhatsAppText | None = None
+    image: WhatsAppMedia | None = None
+    video: WhatsAppMedia | None = None
+    audio: WhatsAppMedia | None = None
+    document: WhatsAppMedia | None = None
+    voice: WhatsAppMedia | None = None
+    location: dict | None = None
+    contacts: list[dict] | None = None
+    errors: list[dict] | None = None
+
+
+class WhatsAppStatus(BaseModel):
+    id: str
+    status: str
+    timestamp: str
+    recipient_id: str
+    conversation: dict | None = None
+    pricing: dict | None = None
+
+
+class WhatsAppMetadata(BaseModel):
+    display_phone_number: str
+    phone_number_id: str
+
+
+class WhatsAppValue(BaseModel):
+    messaging_product: str
+    metadata: WhatsAppMetadata
+    contacts: list[WhatsAppContact] | None = None
+    messages: list[WhatsAppMessage] | None = None
+    statuses: list[WhatsAppStatus] | None = None
+
+
+class WhatsAppChange(BaseModel):
+    value: WhatsAppValue
+    field: str
+
+
+class WhatsAppEntry(BaseModel):
+    id: str
+    changes: list[WhatsAppChange]
 
 
 class WhatsAppWebhookPayload(BaseModel):
-    """Normalized payload from WhatsApp Cloud API webhook."""
-    entry: list[WhatsAppMessage] = Field(..., min_length=1)
+    """Full payload from WhatsApp Cloud API webhook."""
+    object: str = "whatsapp_business_account"
+    entry: list[WhatsAppEntry]
 
 
 # ── Common Intake Response ───────────────────────────────────
