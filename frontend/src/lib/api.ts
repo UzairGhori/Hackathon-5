@@ -8,7 +8,7 @@ import type {
   TicketEvent,
 } from "./types";
 
-const BASE = "";
+const BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, init);
