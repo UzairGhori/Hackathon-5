@@ -7,12 +7,14 @@ that the Kafka worker calls for each incoming message.
 import time
 import uuid
 
-from agents import Agent, Runner
+from agents import Agent, Runner, OpenAIChatCompletionsModel
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.context import AgentContext
 from app.agent.prompts import SYSTEM_PROMPT
 from app.agent.tools import ALL_TOOLS
+from app.config import get_settings
 from app.core.logging import get_logger
 from app.db.models import AgentMetric, ChannelType
 from app.services.customer_service import CustomerService
@@ -20,13 +22,25 @@ from app.services.conversation_service import ConversationService
 
 logger = get_logger(__name__)
 
+# ── x.ai (Grok) Client ──────────────────────────────────────
+
+_settings = get_settings()
+
+_xai_client = AsyncOpenAI(
+    api_key=_settings.xai_api_key,
+    base_url=_settings.xai_base_url,
+)
+
 # ── Agent Definition ─────────────────────────────────────────
 
 support_agent = Agent(
     name="Customer Success Agent",
     instructions=SYSTEM_PROMPT,
     tools=ALL_TOOLS,
-    model="gpt-4o",
+    model=OpenAIChatCompletionsModel(
+        model=_settings.xai_model,
+        openai_client=_xai_client,
+    ),
 )
 
 # ── Runner ───────────────────────────────────────────────────
@@ -112,7 +126,7 @@ async def run_agent(
         response_time_ms=elapsed_ms,
         tokens_input=tokens_in,
         tokens_output=tokens_out,
-        model_used="gpt-4o",
+        model_used=_settings.xai_model,
         resolved_by_ai=not context.escalated,
         escalated=context.escalated,
         metadata_={"tool_trace": context.tool_trace},

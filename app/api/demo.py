@@ -4,7 +4,7 @@ Bypasses Kafka to provide instant end-to-end flow visibility:
   Form → Intake → AI Agent → Ticket → Response
 
 Works in two modes:
-  - Real mode: OPENAI_API_KEY set → uses actual AI agent (gpt-4o)
+  - Real mode: XAI_API_KEY set → uses actual AI agent (grok)
   - Demo mode: No API key → intelligent mock that simulates agent decisions
 """
 
@@ -319,7 +319,7 @@ async def _mock_agent_process(
         response_time_ms=elapsed_ms,
         tokens_input=385,
         tokens_output=142,
-        model_used="gpt-4o (demo-mock)",
+        model_used=f"{settings.xai_model} (demo-mock)",
         resolved_by_ai=not escalated,
         escalated=escalated,
         metadata_={"tool_trace": tool_trace, "mode": "demo"},
@@ -336,7 +336,7 @@ async def _mock_agent_process(
         "elapsed_ms": elapsed_ms,
         "tokens_input": 385,
         "tokens_output": 142,
-        "model_used": "gpt-4o (demo-mock)",
+        "model_used": f"{settings.xai_model} (demo-mock)",
     }
 
 
@@ -418,9 +418,8 @@ async def demo_process_message(
 
     _placeholder_keys = {"", "sk-demo-key", "sk-your-key-here", "your-key-here"}
     use_real_agent = bool(
-        settings.openai_api_key
-        and settings.openai_api_key not in _placeholder_keys
-        and not settings.openai_api_key.startswith("sk-your")
+        settings.xai_api_key
+        and settings.xai_api_key not in _placeholder_keys
     )
 
     if use_real_agent:
@@ -459,7 +458,7 @@ async def demo_process_message(
                 "elapsed_ms": metric.response_time_ms if metric else 0,
                 "tokens_input": metric.tokens_input if metric else 0,
                 "tokens_output": metric.tokens_output if metric else 0,
-                "model_used": "gpt-4o",
+                "model_used": settings.xai_model,
             }
         except Exception as e:
             logger.warning("Real agent failed, falling back to mock: %s", e)

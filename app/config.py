@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     # Kafka
     kafka_bootstrap_servers: str = "localhost:9092"
 
-    # OpenAI
-    openai_api_key: str = ""
+    # x.ai (Grok) — OpenAI-compatible
+    xai_api_key: str = ""
+    xai_base_url: str = "https://api.x.ai/v1"
+    xai_model: str = "grok-4.20-reasoning"
 
     # Gmail SMTP
     gmail_smtp_host: str = "smtp.gmail.com"
