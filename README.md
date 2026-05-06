@@ -17,5 +17,5 @@ This repository is configured to run as a Docker space.
 
 **Environment Variables Needed:**
 - `DATABASE_URL`: Your Neon.tech URL.
-- `OPENAI_API_KEY`: Your OpenAI API key.
+- `XAI_API_KEY`: Your x.ai (Grok) API key.
 - `APP_ENV`: production

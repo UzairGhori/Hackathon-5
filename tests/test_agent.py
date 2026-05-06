@@ -62,7 +62,7 @@ async def test_run_agent_returns_response_and_records_metric(
     assert m.channel == ChannelType.WEB
     assert m.tokens_input == 120
     assert m.tokens_output == 60
-    assert m.model_used == "gpt-4o"
+    assert m.model_used == "grok-4.20-reasoning"
     assert m.resolved_by_ai is True
     assert m.escalated is False
     assert m.response_time_ms >= 0

@@ -82,11 +82,15 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: DATABASE_URL
-            - name: OPENAI_API_KEY
+            - name: XAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: app-secrets
-                  key: OPENAI_API_KEY
+                  key: XAI_API_KEY
+            - name: XAI_BASE_URL
+              value: "https://api.x.ai/v1"
+            - name: XAI_MODEL
+              value: "grok-4.20-reasoning"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "kafka.customer-success.svc.cluster.local:9092"
             - name: APP_ENV
