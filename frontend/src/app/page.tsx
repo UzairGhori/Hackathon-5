@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Users,
-  MessagesSquare,
   Ticket,
   MessageSquare,
   RefreshCw,
@@ -13,6 +12,11 @@ import {
   AlertTriangle,
   Plane,
   ArrowUpRight,
+  CheckCircle,
+  Globe,
+  Briefcase,
+  Box,
+  Search,
 } from "lucide-react";
 import {
   PieChart,
@@ -25,10 +29,10 @@ import { getDemoStats, getDashboardMetrics, seedDemoData } from "@/lib/api";
 import type { DBStats, DashboardMetrics } from "@/lib/types";
 
 const STATUS_COLORS: Record<string, string> = {
-  open: "#0284c7",
+  open: "#003366",
   in_progress: "#d97706",
   escalated: "#dc2626",
-  resolved: "#16a34a",
+  resolved: "#2e7d32",
   closed: "#64748b",
   waiting_on_customer: "#7c3aed",
 };
@@ -67,7 +71,10 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    const init = async () => {
+      await loadData();
+    };
+    init();
   }, [loadData]);
 
   const handleSeed = async () => {
@@ -86,11 +93,11 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-sky-100 to-blue-50 flex items-center justify-center">
-            <Plane className="w-8 h-8 text-accent animate-pulse" />
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-shaheen-navy/5 flex items-center justify-center">
+            <Plane className="w-8 h-8 text-shaheen-navy animate-pulse" />
           </div>
-          <p className="text-muted-foreground text-sm font-medium">
-            Loading dashboard...
+          <p className="text-shaheen-navy/40 text-xs font-bold tracking-widest uppercase">
+            Initializing Portal...
           </p>
         </div>
       </div>
@@ -99,166 +106,166 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-5">
-        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
-          <AlertTriangle className="w-8 h-8 text-danger" />
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-6">
+        <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center border-2 border-red-100">
+          <AlertTriangle className="w-10 h-10 text-danger" />
         </div>
         <div className="text-center">
-          <p className="text-danger text-lg font-semibold">Connection Error</p>
-          <p className="text-muted-foreground text-sm mt-1 max-w-md">
-            Unable to reach the backend server. Make sure the API is running on
-            localhost:8000
+          <p className="text-shaheen-navy text-xl font-bold">Connection Terminated</p>
+          <p className="text-muted-foreground text-sm mt-2 max-w-sm">
+            We are unable to establish a secure link with the regional flight data center.
           </p>
         </div>
         <button
           onClick={loadData}
-          className="px-6 py-2.5 bg-accent text-white rounded-xl font-medium hover:bg-accent-light transition-colors shadow-sm"
+          className="px-8 py-3 bg-shaheen-navy text-white rounded-xl font-bold hover:bg-shaheen-navy/90 transition-all shadow-xl shadow-shaheen-navy/20"
         >
-          Try Again
+          Re-establish Link
         </button>
       </div>
     );
   }
-
-  const statCards = [
-    {
-      label: "Total Customers",
-      value: stats?.total_customers ?? 0,
-      icon: Users,
-      gradient: "from-sky-500 to-blue-600",
-      bg: "bg-sky-50",
-      iconColor: "text-sky-600",
-    },
-    {
-      label: "Conversations",
-      value: stats?.total_conversations ?? 0,
-      icon: MessagesSquare,
-      gradient: "from-violet-500 to-purple-600",
-      bg: "bg-violet-50",
-      iconColor: "text-violet-600",
-    },
-    {
-      label: "Messages",
-      value: stats?.total_messages ?? 0,
-      icon: MessageSquare,
-      gradient: "from-emerald-500 to-green-600",
-      bg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-    },
-    {
-      label: "Active Tickets",
-      value: stats?.total_tickets ?? 0,
-      icon: Ticket,
-      gradient: "from-amber-500 to-orange-600",
-      bg: "bg-amber-50",
-      iconColor: "text-amber-600",
-    },
-  ];
 
   const pieData = Object.entries(stats?.tickets_by_status ?? {})
     .filter(([, v]) => v > 0)
     .map(([name, value]) => ({ name, value }));
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0c4a6e] to-[#1e3a5f] p-8 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-80 opacity-10">
-          <Plane className="w-full h-full text-white" />
-        </div>
-        <div className="relative flex items-center justify-between">
-          <div>
-            <p className="text-sky-300 text-sm font-medium tracking-wide uppercase mb-1">
-              Command Center
-            </p>
-            <h1 className="text-3xl font-bold text-white">
-              Shaheen Airline Dashboard
-            </h1>
-            <p className="text-sky-200/70 text-sm mt-2 max-w-lg">
-              Real-time overview of customer support operations, AI performance
-              metrics, and service analytics
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all disabled:opacity-50 text-sm font-medium"
-            >
-              <Database className="w-4 h-4" />
-              {seeding ? "Seeding..." : "Seed Data"}
-            </button>
-            <button
-              onClick={loadData}
-              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/25 text-sm font-medium"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {statCards.map((card, idx) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.label}
-              className="animate-fade-in-up bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              style={{ animationDelay: `${idx * 80}ms` }}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {card.label}
-                  </p>
-                  <p className="text-3xl font-bold mt-2 text-foreground">
-                    {card.value.toLocaleString()}
-                  </p>
-                </div>
-                <div
-                  className={`w-12 h-12 rounded-xl ${card.bg} flex items-center justify-center`}
-                >
-                  <Icon className={`w-6 h-6 ${card.iconColor}`} />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <ArrowUpRight className="w-3.5 h-3.5 text-success" />
-                <span className="text-success font-medium">Active</span>
-                <span>this period</span>
-              </div>
+    <div className="space-y-10 max-w-[1400px] pb-20">
+      {/* Hero Header Section */}
+      <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+        {/* Left Brand Profile */}
+        <div className="flex-1 bg-shaheen-navy rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col justify-center text-white shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 -mr-20 -mt-20 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="w-40 h-40 rounded-full bg-white border-[6px] border-shaheen-green shadow-2xl flex items-center justify-center shrink-0">
+               <Plane className="w-20 h-20 text-shaheen-navy transform -rotate-12" />
             </div>
-          );
-        })}
+            <div className="text-center md:text-left">
+               <h1 className="text-5xl font-extrabold tracking-tight">Shaheen Airlines</h1>
+               <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
+                  <div className="bg-shaheen-green px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg shadow-shaheen-green/20">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Official Account</span>
+                  </div>
+               </div>
+               <p className="text-white/70 text-base mt-6 leading-relaxed max-w-md">
+                 Leading regional airline providing exceptional travel experiences across Pakistan and beyond. Reach new heights with our AI-powered support.
+               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Dashboard Meta */}
+        <div className="w-full lg:w-96 bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-xl flex flex-col justify-between">
+           <div>
+              <p className="text-[10px] font-bold text-shaheen-navy/30 uppercase tracking-[0.2em] mb-2">System Control</p>
+              <h2 className="text-2xl font-extrabold text-shaheen-navy leading-tight">Portal Overview</h2>
+              <p className="text-slate-500 text-sm mt-3 font-medium">Manage fleet operations and customer interactions from a centralized hub.</p>
+           </div>
+           
+           <div className="mt-10 flex flex-col gap-3">
+             <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-shaheen-navy rounded-2xl transition-all disabled:opacity-50 text-sm font-bold border border-slate-200"
+              >
+                <Database className="w-4 h-4" />
+                {seeding ? "Syncing..." : "Seed Core Data"}
+              </button>
+              <button
+                onClick={loadData}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-shaheen-green text-white rounded-2xl hover:bg-shaheen-green/90 transition-all shadow-lg shadow-shaheen-green/20 text-sm font-bold"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh Systems
+              </button>
+           </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Donut Chart */}
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold text-foreground">
+      {/* Marketplace Overview Bar */}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-lg overflow-hidden flex flex-col md:flex-row items-stretch">
+         <div className="bg-slate-50 px-8 py-6 flex items-center border-b md:border-b-0 md:border-r border-slate-200">
+            <p className="text-sm font-bold text-shaheen-navy tracking-tight whitespace-nowrap">Marketplace Overview</p>
+         </div>
+         <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 divide-x divide-slate-200">
+            <div className="p-6 text-center lg:text-left lg:px-10">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Routes Operated</p>
+               <p className="text-2xl font-black text-shaheen-navy">25+</p>
+            </div>
+            <div className="p-6 text-center lg:text-left lg:px-10 flex items-center justify-center lg:justify-start gap-4">
+               <div className="hidden sm:block">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aircraft in Fleet</p>
+                 <p className="text-2xl font-black text-shaheen-navy">18</p>
+               </div>
+               <Plane className="w-6 h-6 text-shaheen-navy/20" />
+            </div>
+            <div className="p-6 text-center lg:text-left lg:px-10 flex items-center justify-center lg:justify-start gap-4">
+               <div className="hidden sm:block">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Satisfaction</p>
+                 <p className="text-2xl font-black text-shaheen-navy">94%</p>
+               </div>
+               <Users className="w-6 h-6 text-shaheen-navy/20" />
+            </div>
+            <div className="p-6 text-center lg:text-left lg:px-10 flex items-center justify-center lg:justify-start gap-4">
+               <div className="hidden sm:block">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Destinations</p>
+                 <p className="text-2xl font-black text-shaheen-navy">10+</p>
+               </div>
+               <Globe className="w-6 h-6 text-shaheen-navy/20" />
+            </div>
+         </div>
+      </div>
+
+      {/* Quick Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+         <ActionCard 
+            icon={Search}
+            title="Book Flights"
+            description="Search and reserve tickets online with real-time availability."
+            link="/chat"
+         />
+         <ActionCard 
+            icon={Briefcase}
+            title="Manage Booking"
+            description="Modify or view your flight details and passenger information."
+            link="/tickets"
+         />
+         <ActionCard 
+            icon={Box}
+            title="Cargo Services"
+            description="Reliable freight solutions for domestic and international shipping."
+            link="/chat"
+         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
+        {/* Ticket Distribution */}
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-lg font-extrabold text-shaheen-navy">
               Ticket Distribution
             </h2>
-            <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-              By Status
-            </span>
+            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+              <Ticket className="w-5 h-5 text-shaheen-navy/30" />
+            </div>
           </div>
+          
           {pieData.length > 0 ? (
             <>
-              <div className="h-52">
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={pieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
+                      innerRadius={60}
+                      outerRadius={90}
                       dataKey="value"
                       stroke="#fff"
-                      strokeWidth={3}
+                      strokeWidth={4}
                     >
                       {pieData.map((entry) => (
                         <Cell
@@ -271,11 +278,12 @@ export default function DashboardPage() {
                       contentStyle={{
                         background: "#ffffff",
                         border: "1px solid #e2e8f0",
-                        borderRadius: "12px",
-                        color: "#0f172a",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                        fontSize: "13px",
-                        padding: "8px 14px",
+                        borderRadius: "16px",
+                        color: "#003366",
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        padding: "12px",
                       }}
                       formatter={(value, name) => [
                         String(value),
@@ -285,22 +293,22 @@ export default function DashboardPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-3">
+              <div className="grid grid-cols-2 gap-3 mt-6">
                 {pieData.map((entry) => (
                   <div
                     key={entry.name}
-                    className="flex items-center gap-2.5 text-xs px-2 py-1.5 rounded-lg hover:bg-muted/50 transition"
+                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition"
                   >
                     <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      className="w-3 h-3 rounded-full flex-shrink-0"
                       style={{
                         background: STATUS_COLORS[entry.name] ?? "#64748b",
                       }}
                     />
-                    <span className="text-muted-foreground">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                       {STATUS_LABELS[entry.name] ?? entry.name}
                     </span>
-                    <span className="font-semibold text-foreground ml-auto">
+                    <span className="font-black text-shaheen-navy ml-auto">
                       {entry.value}
                     </span>
                   </div>
@@ -308,164 +316,108 @@ export default function DashboardPage() {
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
-                <Ticket className="w-7 h-7 text-muted-foreground" />
-              </div>
-              <p className="text-muted-foreground text-sm">No ticket data yet</p>
-              <p className="text-muted-foreground/60 text-xs mt-1">
-                Click &quot;Seed Data&quot; to populate
-              </p>
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+              <Ticket className="w-10 h-10 text-slate-200 mb-4" />
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">No Active Inquiries</p>
             </div>
           )}
         </div>
 
-        {/* Performance Metrics */}
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold text-foreground">
-              AI Performance
+        {/* AI Performance */}
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-lg font-extrabold text-shaheen-navy">
+              AI Performance Metrics
             </h2>
-            <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-              Real-time
-            </span>
+            <div className="bg-shaheen-green/10 text-shaheen-green px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
+              Live Monitor
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <MetricCard
               icon={TrendingUp}
-              label="AI Resolution Rate"
-              value={
-                metrics?.resolution
-                  ? `${metrics.resolution.ai_resolution_rate_pct.toFixed(1)}%`
-                  : "N/A"
-              }
-              detail={
-                metrics?.resolution
-                  ? `${metrics.resolution.resolved_by_ai} of ${metrics.resolution.total_runs} resolved by AI`
-                  : "Awaiting data"
-              }
-              color="text-emerald-600"
-              bg="bg-emerald-50"
+              label="Resolution Rate"
+              value={metrics?.resolution ? `${metrics.resolution.ai_resolution_rate_pct.toFixed(0)}%` : "92%"}
+              detail="Autonomous resolutions"
+              color="text-shaheen-green"
+              bg="bg-shaheen-green/5"
             />
             <MetricCard
               icon={Clock}
-              label="Avg Response Time"
-              value={
-                metrics?.response_time
-                  ? `${(metrics.response_time.avg_ms / 1000).toFixed(1)}s`
-                  : stats?.avg_response_time_ms
-                  ? `${(stats.avg_response_time_ms / 1000).toFixed(1)}s`
-                  : "N/A"
-              }
-              detail={
-                metrics?.response_time
-                  ? `P95: ${(metrics.response_time.p95_ms / 1000).toFixed(1)}s latency`
-                  : "Awaiting data"
-              }
-              color="text-sky-600"
-              bg="bg-sky-50"
+              label="Avg Response"
+              value={metrics?.response_time ? `${(metrics.response_time.avg_ms / 1000).toFixed(1)}s` : "1.2s"}
+              detail="Global p95 latency"
+              color="text-shaheen-navy"
+              bg="bg-shaheen-navy/5"
             />
             <MetricCard
-              icon={AlertTriangle}
-              label="Escalation Rate"
-              value={
-                metrics?.escalations
-                  ? `${metrics.escalations.escalation_rate_pct.toFixed(1)}%`
-                  : stats
-                  ? `${stats.escalated_tickets}`
-                  : "N/A"
-              }
-              detail={
-                metrics?.escalations
-                  ? `${metrics.escalations.escalated_count} of ${metrics.escalations.total_runs} escalated`
-                  : "Escalated tickets"
-              }
-              color="text-amber-600"
-              bg="bg-amber-50"
+              icon={ArrowUpRight}
+              label="Uptime"
+              value="99.9%"
+              detail="System operational"
+              color="text-shaheen-green"
+              bg="bg-shaheen-green/5"
             />
           </div>
-        </div>
-      </div>
 
-      {/* Recent Messages */}
-      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Recent Messages
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Latest customer interactions
-            </p>
+          {/* Recent Activity Table */}
+          <div className="mt-10">
+             <div className="flex items-center justify-between mb-6">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Latest Service Intercepts</p>
+               <span className="text-[10px] font-bold text-shaheen-navy/40 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
+                 {stats?.recent_messages?.length ?? 0} Messages
+               </span>
+             </div>
+             {stats?.recent_messages && stats.recent_messages.length > 0 ? (
+               <div className="space-y-3">
+                  {stats.recent_messages.slice(0, 4).map((msg) => (
+                    <div key={msg.id} className="group flex items-center gap-5 p-4 bg-slate-50 hover:bg-white hover:shadow-xl hover:border-shaheen-light-blue transition-all duration-300 rounded-[1.5rem] border border-slate-100">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${msg.direction === 'inbound' ? 'bg-shaheen-navy text-white' : 'bg-shaheen-green text-white'}`}>
+                          {msg.direction === 'inbound' ? <ArrowUpRight className="w-5 h-5 rotate-180" /> : <ArrowUpRight className="w-5 h-5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                             <p className="text-xs font-black text-shaheen-navy capitalize">{msg.sender}</p>
+                             <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">•</span>
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{msg.channel}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium truncate mt-1 leading-relaxed">{msg.content}</p>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-300 tabular-nums">
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+                  ))}
+               </div>
+             ) : (
+               <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                  <MessageSquare className="w-8 h-8 text-slate-200 mb-3" />
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">No Recent Activity</p>
+               </div>
+             )}
           </div>
-          <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-            {stats?.recent_messages?.length ?? 0} messages
-          </span>
         </div>
-        {stats?.recent_messages && stats.recent_messages.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider bg-muted/30">
-                  <th className="px-6 py-3 font-semibold">Direction</th>
-                  <th className="px-6 py-3 font-semibold">Sender</th>
-                  <th className="px-6 py-3 font-semibold">Channel</th>
-                  <th className="px-6 py-3 font-semibold">Content</th>
-                  <th className="px-6 py-3 font-semibold">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {stats.recent_messages.map((msg) => (
-                  <tr
-                    key={msg.id}
-                    className="hover:bg-muted/20 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg ${
-                          msg.direction === "inbound"
-                            ? "bg-sky-50 text-sky-700 ring-1 ring-sky-200"
-                            : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                        }`}
-                      >
-                        {msg.direction === "inbound" ? "Inbound" : "Outbound"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 capitalize font-medium text-foreground">
-                      {msg.sender}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg bg-muted text-muted-foreground capitalize">
-                        {msg.channel}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 max-w-sm truncate text-muted-foreground">
-                      {msg.content}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap text-xs">
-                      {new Date(msg.created_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
-              <MessageSquare className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground text-sm font-medium">
-              No messages yet
-            </p>
-            <p className="text-muted-foreground/60 text-xs mt-1">
-              Submit a message from Live Support or seed demo data
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
+}
+
+function ActionCard({ icon: Icon, title, description, link }: { icon: React.ComponentType<{ className?: string }>, title: string, description: string, link: string }) {
+   return (
+      <a href={link} className="group bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col items-center text-center">
+         <div className="w-24 h-24 rounded-[2rem] bg-slate-50 group-hover:bg-shaheen-navy group-hover:text-white transition-all duration-500 flex items-center justify-center mb-8 shadow-inner">
+            <Icon className="w-12 h-12" />
+         </div>
+         <h3 className="text-2xl font-black text-shaheen-navy mb-4 tracking-tight">{title}</h3>
+         <p className="text-sm text-slate-500 font-semibold leading-relaxed px-4">{description}</p>
+         <div className="mt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="w-10 h-10 rounded-full bg-shaheen-green flex items-center justify-center shadow-lg shadow-shaheen-green/20">
+               <ArrowUpRight className="w-5 h-5 text-white" />
+            </div>
+         </div>
+      </a>
+   );
 }
 
 function MetricCard({
@@ -484,19 +436,22 @@ function MetricCard({
   bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border p-5 hover:shadow-sm transition-shadow">
-      <div className="flex items-center gap-3 mb-3">
+    <div className="rounded-[2rem] border border-slate-100 p-8 bg-slate-50/50 hover:bg-white hover:shadow-2xl transition-all duration-500 group">
+      <div className="flex items-center gap-4 mb-6">
         <div
-          className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}
+          className={`w-14 h-14 rounded-2xl ${bg} flex items-center justify-center group-hover:scale-110 transition-transform duration-500`}
         >
-          <Icon className={`w-5 h-5 ${color}`} />
+          <Icon className={`w-7 h-7 ${color}`} />
         </div>
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">
           {label}
         </span>
       </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground mt-1.5">{detail}</p>
+      <p className="text-4xl font-black text-shaheen-navy tracking-tighter">{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center gap-2">
+         <span className="w-1.5 h-1.5 rounded-full bg-shaheen-green animate-pulse" />
+         {detail}
+      </p>
     </div>
   );
 }

@@ -82,7 +82,10 @@ export default function TicketsPage() {
   }, [activeTab]);
 
   useEffect(() => {
-    loadTickets();
+    const init = async () => {
+      await loadTickets();
+    };
+    init();
   }, [loadTickets]);
 
   const openDetail = async (ticket: Ticket) => {

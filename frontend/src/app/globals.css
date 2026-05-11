@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f1f5f9;
+  --foreground: #003366;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #003366;
   --border: #e2e8f0;
-  --muted: #f1f5f9;
+  --muted: #f8fafc;
   --muted-foreground: #64748b;
-  --accent: #0c4a6e;
-  --accent-light: #0369a1;
+  --accent: #003366;
+  --accent-light: #004d99;
   --accent-foreground: #ffffff;
-  --success: #16a34a;
-  --warning: #d97706;
+  --success: #2e7d32;
+  --warning: #b45309;
   --danger: #dc2626;
-  --primary-gradient-from: #0c4a6e;
-  --primary-gradient-to: #1e40af;
-  --gold: #b45309;
-  --gold-light: #f59e0b;
+  --shaheen-navy: #003366;
+  --shaheen-green: #2e7d32;
+  --shaheen-gold: #b45309;
+  --shaheen-light-blue: #e0f2fe;
 }
 
 @theme inline {
@@ -34,8 +34,10 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --color-gold: var(--gold);
-  --color-gold-light: var(--gold-light);
+  --color-shaheen-navy: var(--shaheen-navy);
+  --color-shaheen-green: var(--shaheen-green);
+  --color-shaheen-gold: var(--shaheen-gold);
+  --color-shaheen-light-blue: var(--shaheen-light-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
