@@ -1,23 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #003366;
+  --background: #f8fafc;
+  --foreground: #002d5a;
   --card: #ffffff;
-  --card-foreground: #003366;
-  --border: #e2e8f0;
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
+  --card-foreground: #002d5a;
+  --border: #cbd5e1;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
   --accent: #003366;
-  --accent-light: #004d99;
+  --accent-light: #004a99;
   --accent-foreground: #ffffff;
-  --success: #2e7d32;
-  --warning: #b45309;
-  --danger: #dc2626;
+  --success: #15803d;
+  --warning: #a16207;
+  --danger: #be123c;
   --shaheen-navy: #003366;
   --shaheen-green: #2e7d32;
   --shaheen-gold: #b45309;
-  --shaheen-light-blue: #e0f2fe;
+  --shaheen-light-blue: #f1f5f9;
+  --shaheen-emerald: #10b981;
 }
 
 @theme inline {
@@ -38,6 +39,7 @@
   --color-shaheen-green: var(--shaheen-green);
   --color-shaheen-gold: var(--shaheen-gold);
   --color-shaheen-light-blue: var(--shaheen-light-blue);
+  --color-shaheen-emerald: var(--shaheen-emerald);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
